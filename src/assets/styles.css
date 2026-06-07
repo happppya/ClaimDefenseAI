@@ -1,0 +1,66 @@
+/* ==========================================
+   assets/styles.css
+   Pure CSS structural mutators and resets.
+   ========================================== */
+
+.stApp {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, h5, h6, .sidebar-title {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.03em;
+}
+
+p, span, div {
+    color: var(--text-secondary);
+}
+
+/* Spatial Structural Cards */
+.intake-card {
+    background-color: var(--bg-surface);
+    padding: 2.5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+/* Component Mutators */
+.stTextArea textarea, .stTextInput input, .stSelectbox div[data-baseweb="select"] {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stTextArea textarea:focus, .stTextInput input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 1px var(--accent) !important;
+}
+
+div[data-testid="stExpander"] {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+/* Fluid Navigation Sidebar */
+div[data-testid="stSidebar"] button[kind="secondary"] {
+    background-color: transparent;
+    border: 1px solid transparent;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    justify-content: flex-start;
+    color: var(--text-secondary);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+div[data-testid="stSidebar"] button[kind="secondary"]:hover {
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--border);
+}
