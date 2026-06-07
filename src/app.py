@@ -2,67 +2,147 @@ import streamlit as st
 import os
 import re
 import uuid
+from dataclasses import dataclass
+from typing import Tuple, Optional, Dict, Any, List
 from dotenv import load_dotenv
 import backend 
-
 from langchain_core.messages import HumanMessage, AIMessage
 
-# Load environment variables
 load_dotenv()
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
-def configure_page():
+# ==========================================
+# 1. DESIGN SYSTEM & THEMING ARCHITECTURE
+# ==========================================
+
+@dataclass
+class ThemeTokens:
+    """
+    Centralized design tokens mapping to CSS variables.
+    Provides a single source of truth for instantaneous theme pivoting.
+    """
+    bg_base: str = "#0E0E0E"
+    bg_surface: str = "#161616"
+    bg_elevated: str = "#1E1E1E"
+    text_primary: str = "#F3F4F6"
+    text_secondary: str = "#9CA3AF"
+    accent: str = "#3B82F6"
+    accent_hover: str = "#2563EB"
+    border: str = "#27272A"
+    radius_md: str = "8px"
+    radius_lg: str = "12px"
+    font_sans: str = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+
+def inject_design_system(tokens: ThemeTokens) -> None:
+    """
+    Mounts CSS custom properties to the DOM root and orchestrates component overrides.
+    """
+    css = f"""
+    <style>
+        :root {{
+            --bg-base: {tokens.bg_base};
+            --bg-surface: {tokens.bg_surface};
+            --bg-elevated: {tokens.bg_elevated};
+            --text-primary: {tokens.text_primary};
+            --text-secondary: {tokens.text_secondary};
+            --accent: {tokens.accent};
+            --border: {tokens.border};
+            --radius-md: {tokens.radius_md};
+            --radius-lg: {tokens.radius_lg};
+            --font-sans: {tokens.font_sans};
+        }}
+
+        /* Typography & Canvas Reset */
+        .stApp {{
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+        }}
+        
+        h1, h2, h3, h4, h5, h6, .sidebar-title {{
+            color: var(--text-primary) !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.03em;
+        }}
+
+        p, span, div {{
+            color: var(--text-secondary);
+        }}
+
+        /* Component Mutators */
+        .stTextArea textarea, .stTextInput input, .stSelectbox div[data-baseweb="select"] {{
+            background-color: var(--bg-elevated) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius-md) !important;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }}
+        
+        .stTextArea textarea:focus, .stTextInput input:focus {{
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 1px var(--accent) !important;
+        }}
+
+        div[data-testid="stExpander"] {{
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+        }}
+
+        /* Fluid Navigation Sidebar */
+        div[data-testid="stSidebar"] button[kind="secondary"] {{
+            background-color: transparent;
+            border: 1px solid transparent;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            justify-content: flex-start;
+            color: var(--text-secondary);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }}
+        
+        div[data-testid="stSidebar"] button[kind="secondary"]:hover {{
+            background-color: var(--bg-elevated);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+def configure_page() -> None:
     st.set_page_config(page_title="ClaimDefense AI", page_icon="⚕️", layout="wide")
-    st.markdown("""
-        <style>
-            /* Professional B2B Dark Aesthetic */
-            .stApp { background-color: #131314; color: #e3e3e3; }
-            .sidebar-title { font-size: 1.25rem; font-weight: 600; color: #e3e3e3; margin-bottom: 1rem; }
-            .intake-card { background-color: #1e1f20; padding: 2rem; border-radius: 12px; border: 1px solid #444746; margin: 1rem auto; }
-            div[data-testid="stExpander"] { background-color: #1e1f20; border: 1px solid #444746; border-radius: 8px; }
-            .stTextArea textarea, .stTextInput input, .stSelectbox div[data-baseweb="select"] { background-color: #131314 !important; color: #e3e3e3 !important; border: 1px solid #444746 !important; }
-            
-            /* Clean up sidebar buttons to look like history items */
-            div[data-testid="stSidebar"] button {
-                border: none;
-                background-color: transparent;
-                text-align: left;
-                padding: 0.5rem;
-                justify-content: flex-start;
-                font-size: 0.9rem;
-                color: #c4c7c5;
-            }
-            div[data-testid="stSidebar"] button:hover {
-                background-color: #282a2d;
-                color: #e3e3e3;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-    
-def init_session_state():
-    """Initializes a dictionary-based session state to handle multiple chat instances."""
+    # Instant theme pivot point. Swap parameters here to compile an entirely new aesthetic.
+    theme = ThemeTokens() 
+    inject_design_system(theme)
+
+# ==========================================
+# 2. STATE & DATA ORCHESTRATION
+# ==========================================
+
+def init_session_state() -> None:
     if "chats" not in st.session_state:
-        # Structure: { chat_id: { 'title': str, 'messages': list, 'rag_context': str, 'retrieved_docs': list, 'provider': str } }
-        st.session_state.chats = {}
+        st.session_state.chats: Dict[str, Any] = {}
     if "current_chat_id" not in st.session_state:
-        st.session_state.current_chat_id = None
+        st.session_state.current_chat_id: Optional[str] = None
 
 @st.cache_resource(show_spinner=False)
-def init_db():
+def init_db() -> Any:
     return backend.build_vector_db()
 
-def process_agent_response(response_text):
-    """Extracts the draft and cleans the text for the UI."""
+def process_agent_response(response_text: str) -> Tuple[str, Optional[str]]:
     match = re.search(r'<FINAL_LETTER>(.*?)</FINAL_LETTER>', response_text, re.DOTALL)
     draft = match.group(1).strip() if match else None
     clean_ui_text = re.sub(r'<FINAL_LETTER>|</FINAL_LETTER>', '', response_text).strip()
     return clean_ui_text, draft
 
-def render_sidebar():
+# ==========================================
+# 3. COMPONENT RENDERING
+# ==========================================
+
+def render_sidebar() -> Any:
     with st.sidebar:
         st.markdown("<div class='sidebar-title'>ClaimDefense AI</div>", unsafe_allow_html=True)
         
-        # Reset to Intake Screen
         if st.button("+ New Appeal", use_container_width=True, type="primary"):
             st.session_state.current_chat_id = None
             st.rerun()
@@ -70,13 +150,10 @@ def render_sidebar():
         st.markdown("---")
         st.markdown("### Active & Past Cases")
         
-        # Render dynamic history buttons
         if not st.session_state.chats:
             st.caption("No recent appeal logs found.")
         else:
-            # Reverse order to show newest first
             for chat_id, chat_data in reversed(st.session_state.chats.items()):
-                # Highlight the active chat visually
                 prefix = "🟢" if chat_id == st.session_state.current_chat_id else "📄"
                 if st.button(f"{prefix} {chat_data['title']}", key=f"load_{chat_id}", use_container_width=True):
                     st.session_state.current_chat_id = chat_id
@@ -84,180 +161,158 @@ def render_sidebar():
             
         st.markdown("---")
         st.subheader("System Status")
-        vector_db = None
         
+        vector_db = None
         if MISTRAL_API_KEY:
             with st.spinner("Indexing vector database..."):
                 vector_db = init_db()
             if vector_db is None:
-                st.error("Vector DB Offline: No Policies")
+                st.error("Vector DB Offline")
             else:
                 st.success("Vector DB Active")
         else:
-            st.error("Missing Mistral API Key")
+            st.error("Missing Auth Context")
             
     return vector_db
 
-def render_main_content(vector_db):
-    # CASE 1: No active chat selected -> Show Intake Interface
-    if st.session_state.current_chat_id is None:
-        st.markdown("<h1 style='text-align: center; margin-top: 1rem; color: #e3e3e3;'>New Appeal</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #9aa0a6;'>Input claim criteria to filter exact metadata and initiate the RAG agent.</p>", unsafe_allow_html=True)
+def handle_intake_submission(patient_name: str, denial_reason: str, provider: str, vector_db: Any) -> None:
+    """
+    Executes the retrieval pipeline, constructs state boundaries, and locks the session state.
+    """
+    with st.spinner("Setting up..."):
+        provider_arg = None if provider == "Auto-Detect" else provider
+        context, docs, detected_prov = backend.retrieve_policy_context(denial_reason, vector_db, provider_arg)
         
-        with st.container():
-            st.markdown("<div class='intake-card'>", unsafe_allow_html=True)
-            
-            # Using columns for a denser, more professional B2B layout
-            col1, col2 = st.columns(2)
-            with col1:
-                patient_name = st.text_input("Patient Name (or ID)")
-            with col2:
-                provider_options = ["Auto-Detect", "aetna", "cigna", "unitedhealthcare", "bluecross", "medicare"]
-                selected_provider = st.selectbox("Insurance Provider Filter", options=provider_options)
-            
-            denial_reason = st.text_area(
-                "Extracted Denial Reason / Letter Text", 
-                height=150, 
-                placeholder="Paste the exact text of the denial reason here. E.g., 'CPT 70551 not deemed medically necessary...'"
-            )
-            
-            if st.button("Initialize Appeal Agent", type="primary", use_container_width=True):
-                if denial_reason and patient_name:
-                    with st.spinner("Analyzing denial data and retrieving policy guidelines..."):
-                        provider_arg = None if selected_provider == "Auto-Detect" else selected_provider
-                        
-                        # 1. Run Retrieval Pipeline
-                        context, docs, detected_prov = backend.retrieve_policy_context(
-                            denial_reason, vector_db, provider_arg
-                        )
-                        
-                        # 2. Setup New Chat State Profile
-                        new_chat_id = str(uuid.uuid4())
-                        initial_input = f"Patient: {patient_name}\nDenial Reason: {denial_reason}"
-                        starting_messages = [HumanMessage(content=initial_input)]
-                        
-                        # 3. Generate Initial Agent Response
-                        raw_response = backend.chat_with_agent(
-                            starting_messages, 
-                            context, 
-                            patient_name
-                        )
-                        clean_response, draft = process_agent_response(raw_response)
-                        
-                        new_ai_msg = AIMessage(
-                            content=clean_response,
-                            additional_kwargs={
-                                "draft": draft,
-                                "sources": docs
-                            }
-                        )
-                        starting_messages.append(new_ai_msg)
-                        
-                        # 4. Save to global chats dictionary
-                        case_title = f"{patient_name}: {detected_prov.upper()}"
-                        st.session_state.chats[new_chat_id] = {
-                            "title": case_title,
-                            "messages": starting_messages,
-                            "rag_context": context,
-                            "retrieved_docs": docs,
-                            "provider": detected_prov
-                        }
-                        
-                        # 5. Lock in the active chat and render
-                        st.session_state.current_chat_id = new_chat_id
-                        st.rerun()
-                else:
-                    st.warning("Please provide both the Patient Name and Denial Reason to start.")
-            st.markdown("</div>", unsafe_allow_html=True)
+        new_chat_id = str(uuid.uuid4())
+        initial_input = f"Patient: {patient_name}\nDenial Reason: {denial_reason}"
+        starting_messages = [HumanMessage(content=initial_input)]
+        
+        raw_response = backend.chat_with_agent(starting_messages, context, patient_name)
+        clean_response, draft = process_agent_response(raw_response)
+        
+        starting_messages.append(AIMessage(
+            content=clean_response,
+            additional_kwargs={"draft": draft, "sources": docs}
+        ))
+        
+        st.session_state.chats[new_chat_id] = {
+            "title": f"{patient_name}: {detected_prov.upper()}",
+            "messages": starting_messages,
+            "rag_context": context,
+            "retrieved_docs": docs,
+            "provider": detected_prov
+        }
+        st.session_state.current_chat_id = new_chat_id
+        st.rerun()
 
-    # CASE 2: Active Chat -> Display Conversational Workspace
-    else:
-        # Load the specific chat pointer
-        active_chat = st.session_state.chats[st.session_state.current_chat_id]
+def render_intake_view(vector_db: Any) -> None:
+    st.markdown("<h1 style='text-align: center; margin-top: 1rem;'>New Appeal</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Enter some basic information before we begin drafting.</p>", unsafe_allow_html=True)
+    
+    with st.container():
+       
+        col1, col2 = st.columns(2)
+        with col1:
+            patient_name = st.text_input("Patient Identifier")
+        with col2:
+            provider_options = ["Auto-Detect", "aetna", "cigna", "unitedhealthcare", "bluecross", "medicare"]
+            selected_provider = st.selectbox("Insurance Provider", options=provider_options)
         
-        st.markdown(f"<h3>Case Workspace: <span style='color: #2563EB;'>{active_chat['provider'].upper()}</span></h3>", unsafe_allow_html=True)
-        st.markdown("---")
+        denial_reason = st.text_area(
+            "Extraction Data / Letter Text", 
+            height=150, 
+            placeholder="Inject raw denial reason logic..."
+        )
         
-        # Render Timeline
-        for i, msg in enumerate(active_chat['messages']):
-            # Hide the initial injection prompt
-            if isinstance(msg, HumanMessage) and "Patient:" in msg.content and "Denial Reason:" in msg.content:
-                continue
+        if st.button("Initialize Agent", type="primary", use_container_width=True):
+            if denial_reason and patient_name:
+                handle_intake_submission(patient_name, denial_reason, selected_provider, vector_db)
+            else:
+                st.warning("Insufficient parameters provided.")
                 
-            role = "user" if isinstance(msg, HumanMessage) else "assistant"
-            with st.chat_message(role):
-                st.write(msg.content)
-                
-                if isinstance(msg, AIMessage):
-                    sources = msg.additional_kwargs.get("sources", [])
-                    draft = msg.additional_kwargs.get("draft", None)
-                    
-                    if sources:
-                        with st.expander("🔍 View Sourced Policy Reference Guidelines"):
-                            for idx, doc in enumerate(sources):
-                                source_name = doc.metadata.get('source', 'Unknown')
-                                page = doc.metadata.get('page', 'Unknown')
-                                st.markdown(f"**Source {idx+1}:** {os.path.basename(source_name)} (Page {page})")
-                                st.caption(doc.page_content[:300] + "...")
-                    
-                    if draft:
-                        st.success("✅ Final Actionable Draft Compiled Successfully!")
-                        st.download_button(
-                            label="⬇️ Download Letter Content payload (.TXT)",
-                            data=draft,
-                            file_name=f"Appeal_{active_chat['provider']}_{st.session_state.current_chat_id[:5]}.txt",
-                            mime="text/plain",
-                            use_container_width=True,
-                            type="primary",
-                            # Use chat_id + index to guarantee absolute button key uniqueness 
-                            key=f"dl_btn_{st.session_state.current_chat_id}_{i}" 
-                        )
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        # Dynamic floating text input
-        if active_chat['rag_context'] is not None:
-            if user_input := st.chat_input("Provide details or type 'Draft the letter'"):
-                active_chat['messages'].append(HumanMessage(content=user_input))
+def render_workspace_view() -> None:
+    active_chat = st.session_state.chats[st.session_state.current_chat_id]
+    
+    st.markdown(f"<h3>Workspace: <span style='color: var(--accent);'>{active_chat['provider'].upper()}</span></h3>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    for i, msg in enumerate(active_chat['messages']):
+        if isinstance(msg, HumanMessage) and "Patient:" in msg.content and "Denial Reason:" in msg.content:
+            continue
+            
+        role = "user" if isinstance(msg, HumanMessage) else "assistant"
+        with st.chat_message(role):
+            st.write(msg.content)
+            
+            if isinstance(msg, AIMessage):
+                sources = msg.additional_kwargs.get("sources", [])
+                draft = msg.additional_kwargs.get("draft", None)
+                
+                if sources:
+                    with st.expander("References"):
+                        for idx, doc in enumerate(sources):
+                            source_name = doc.metadata.get('source', 'Unknown')
+                            page = doc.metadata.get('page', 'Unknown')
+                            st.markdown(f"**Source {idx+1}:** {os.path.basename(source_name)} (Page {page})")
+                            st.caption(doc.page_content[:300] + "...")
+                
+                if draft:
+                    st.success("Draft Compiled.")
+                    st.download_button(
+                        label="⬇️ Download Output Payload (.TXT)",
+                        data=draft,
+                        file_name=f"Appeal_{active_chat['provider']}_{st.session_state.current_chat_id[:5]}.txt",
+                        mime="text/plain",
+                        use_container_width=True,
+                        type="primary",
+                        key=f"dl_btn_{st.session_state.current_chat_id}_{i}" 
+                    )
+
+    if active_chat['rag_context'] is not None:
+        if user_input := st.chat_input("Execute follow-up instruction..."):
+            active_chat['messages'].append(HumanMessage(content=user_input))
+            st.rerun()
+
+    if len(active_chat['messages']) > 0 and isinstance(active_chat['messages'][-1], HumanMessage):
+        with st.chat_message("assistant"):
+            with st.spinner("Processing trajectory..."):
+                raw_response = backend.chat_with_agent(
+                    active_chat['messages'],
+                    active_chat['rag_context'],
+                    "" 
+                )
+                clean_response, draft = process_agent_response(raw_response)
+                
+                active_chat['messages'].append(AIMessage(
+                    content=clean_response,
+                    additional_kwargs={"draft": draft, "sources": active_chat['retrieved_docs']}
+                ))
                 st.rerun()
 
-        # Handle Generation Loop
-        if len(active_chat['messages']) > 0 and isinstance(active_chat['messages'][-1], HumanMessage):
-            with st.chat_message("assistant"):
-                with st.spinner("Agent is tracking policies and drafting..."):
-                    raw_response = backend.chat_with_agent(
-                        active_chat['messages'],
-                        active_chat['rag_context'],
-                        "" 
-                    )
-                    
-                    clean_response, draft = process_agent_response(raw_response)
-                    
-                    new_ai_msg = AIMessage(
-                        content=clean_response,
-                        additional_kwargs={
-                            "draft": draft,
-                            "sources": active_chat['retrieved_docs']
-                        }
-                    )
-                    # Python automatically updates the dict value because it references the same list
-                    active_chat['messages'].append(new_ai_msg) 
-                    st.rerun()
+# ==========================================
+# 4. ENTRY POINT
+# ==========================================
 
-def main():
+def main() -> None:
     configure_page()
     init_session_state() 
     
     mistral_key = os.getenv("MISTRAL_API_KEY")
-    
     if not mistral_key or mistral_key == "myKeyExistsHere" or len(mistral_key) < 20:
-        st.error("Invalid Mistral API Key detected. Please update your `.env` file with a valid key.")
+        st.error("Invalid Authentication parameters. Halt execution.")
         st.stop()
 
     vector_db = render_sidebar()
     if vector_db is None:
-        st.warning("No policy PDFs found in `/policies`. Database offline.")
+        st.warning("Database mounting failed.")
         st.stop()
 
-    render_main_content(vector_db)
+    if st.session_state.current_chat_id is None:
+        render_intake_view(vector_db)
+    else:
+        render_workspace_view()
 
 if __name__ == "__main__":
     main()
