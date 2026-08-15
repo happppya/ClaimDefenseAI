@@ -169,7 +169,7 @@ export function Landing() {
               <p className="mt-3 text-zinc-400">A RAG index split by payer folder (aetna/cigna/unitedhealthcare/bluecross/medicare) with Chroma persistent storage. Filtered retrieval = fewer irrelevant cites.</p>
               <ul className="mt-6 space-y-3 text-sm">
                 {[
-                  "700+ LCD/NCD PDFs scraped via Playwright (see policies/ + notes/*.txt)",
+                  "700+ LCD/NCD PDFs indexed from CMS Medicare + Medicaid manuals",
                   "Chunk 1000 / overlap 200 • Mistral embeddings • Provider tag on every chunk",
                   "4 best excerpts surfaced per appeal with Source + Page",
                   "Includes 138MB pre-built chroma.sqlite3 — no cold-start scrape needed",
