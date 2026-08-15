@@ -1,0 +1,35 @@
+# Node
+node_modules
+dist
+dist-ssr
+.npm
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env/
+*.egg-info/
+.pytest_cache/
+
+# Chroma - keep DB jar but ignore logs/locks
+chroma_db_storage/*.lock
+chroma_db_storage/**/index/*.bin
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# Build
+tsconfig.tsbuildinfo
+tsconfig.node.tsbuildinfo

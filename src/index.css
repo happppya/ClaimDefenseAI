@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0E0E12;
+  --surface: #16161B;
+  --elevated: #1E1E25;
+}
+
+* { font-family: Inter, system-ui, sans-serif; }
+
+html { scroll-behavior: smooth; }
+body {
+  background: #0B0B0F;
+  color: #EDEEF2;
+  overflow-x: hidden;
+}
+
+.font-display { font-family: "Space Grotesk", Inter, sans-serif; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #2A2A33; border-radius: 999px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Focus ring */
+*:focus-visible { outline: 2px solid #3B82F6; outline-offset: 2px; }
+
+/* Prose for letter */
+.letter-prose { font-family: Inter, sans-serif; line-height: 1.65; }
+.letter-prose p { margin-bottom: 0.85em; }
+
+/* Glass */
+.glass {
+  background: rgba(22,22,27,0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
